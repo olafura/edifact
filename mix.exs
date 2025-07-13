@@ -21,7 +21,8 @@ defmodule Edifact.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_parsec, "~> 1.0"}
+      {:nimble_parsec, "~> 1.0"},
+      {:stream_data, "~> 1.0", only: :test}
     ]
   end
 end

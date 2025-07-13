@@ -11,17 +11,16 @@ defmodule Edifact.Parser do
     choice([
       escaped_char,
       ascii_string([?A..?Z], 1),
-      ascii_string([?a..?z], 1),
       ascii_string([?0..?9], 1),
       ascii_string([?\s, ?., ?,, ?-, ?(, ?), ?/, ?=], 1)
     ])
 
-  component_data_element_seperator =
+  component_data_element_separator =
     ignore(ascii_string([?:], 1))
 
-  data_element_seperator =
+  data_element_separator =
     ascii_string([{:not, ?:} | all_alphanumberic_char], 1)
-    |> unwrap_and_tag(:data_element_seperator)
+    |> unwrap_and_tag(:data_element_separator)
 
   decimal_notation =
     ascii_string([?., ?,], 1)
@@ -38,8 +37,8 @@ defmodule Edifact.Parser do
   defparsec(
     :service_string_advice,
     ignore(string("UNA"))
-    |> concat(component_data_element_seperator)
-    |> concat(data_element_seperator)
+    |> concat(component_data_element_separator)
+    |> concat(data_element_separator)
     |> concat(decimal_notation)
     |> concat(release_indicator)
     |> ignore(string(" "))
@@ -47,7 +46,7 @@ defmodule Edifact.Parser do
     |> post_traverse({:una_check_if_same, []})
   )
 
-  default_data_element_seperator =
+  default_data_element_separator =
     ignore(string("+"))
 
   controlling_agency =
@@ -85,10 +84,10 @@ defmodule Edifact.Parser do
   interchange_participant =
     participant_identification
     |> optional(
-      component_data_element_seperator
+      component_data_element_separator
       |> optional(partner_identification)
       |> optional(
-        component_data_element_seperator
+        component_data_element_separator
         |> concat(address_for_reverse_routing)
       )
     )
@@ -160,6 +159,7 @@ defmodule Edifact.Parser do
 
   hour =
     choice([
+      string("00"),
       string("01"),
       string("02"),
       string("03"),
@@ -182,8 +182,7 @@ defmodule Edifact.Parser do
       string("20"),
       string("21"),
       string("22"),
-      string("23"),
-      string("24")
+      string("23")
     ])
     |> unwrap_and_tag(:hour)
 
@@ -256,7 +255,7 @@ defmodule Edifact.Parser do
     year
     |> concat(month)
     |> concat(day)
-    |> concat(component_data_element_seperator)
+    |> concat(component_data_element_separator)
     |> concat(hour)
     |> concat(minutes)
     |> tag(:date_time)
@@ -269,17 +268,17 @@ defmodule Edifact.Parser do
   defparsec(
     :interchange_header,
     ignore(string("UNB"))
-    |> concat(default_data_element_seperator)
+    |> concat(default_data_element_separator)
     |> concat(syntax_identifier)
-    |> concat(component_data_element_seperator)
+    |> concat(component_data_element_separator)
     |> concat(syntax_version_number)
-    |> concat(default_data_element_seperator)
+    |> concat(default_data_element_separator)
     |> concat(interchange_sender)
-    |> concat(default_data_element_seperator)
+    |> concat(default_data_element_separator)
     |> concat(interchange_recipient)
-    |> concat(default_data_element_seperator)
+    |> concat(default_data_element_separator)
     |> concat(date_time)
-    |> concat(default_data_element_seperator)
+    |> concat(default_data_element_separator)
     |> concat(interchange_control_reference)
   )
 
@@ -295,7 +294,7 @@ defmodule Edifact.Parser do
   def apply_service_advice(
         line,
         %{
-          data_element_seperator: data_element_seperator,
+          data_element_separator: data_element_separator,
           decimal_notation: decimal_notation,
           release_indicator: release_indicator,
           segment_terminator: segment_terminator
@@ -303,14 +302,14 @@ defmodule Edifact.Parser do
       ) do
     release_indicator = if release_indicator == " ", do: "?", else: release_indicator
 
-    base_replacement_list = [data_element_seperator, decimal_notation, segment_terminator]
+    base_replacement_list = [data_element_separator, decimal_notation, segment_terminator]
     replacement_list = for(type <- base_replacement_list, do: "?#{type}") ++ base_replacement_list
 
     line
     |> String.replace(
       ["+", ".", "'"],
       fn
-        "+" when data_element_seperator !== "+" -> "?+"
+        "+" when data_element_separator !== "+" -> "?+"
         "." when decimal_notation !== "." -> "?."
         "'" when segment_terminator !== "'" -> "?'"
         other -> other
@@ -319,7 +318,7 @@ defmodule Edifact.Parser do
     |> String.replace(release_indicator, "?")
     |> String.replace(replacement_list, fn
       <<"?"::binary, _>> = escaped -> escaped
-      ^data_element_seperator -> "+"
+      ^data_element_separator -> "+"
       ^decimal_notation -> "."
       ^segment_terminator -> "'"
     end)

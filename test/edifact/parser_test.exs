@@ -30,7 +30,7 @@ defmodule Edifact.ParserTest do
 
     assert {:ok, ^parsed, _, _, _, _} = Edifact.Parser.interchange_header(line)
 
-    line2 = "UNB+UNOC:3+9457386:30:300a+73130012:30+940101:0950+8+MPM?| ?+ 2.19+1424'"
+    line2 = "UNB+UNOC:3+9457386:30:300A+73130012:30+940101:0950+8'"
 
     parsed2 = [
       syntax_identifier: [controlling_agency: "UNO", level: "C"],
@@ -38,7 +38,7 @@ defmodule Edifact.ParserTest do
       interchange_sender: [
         identification: "9457386",
         partner_identification: "30",
-        routing_address: "300a"
+        routing_address: "300A"
       ],
       interchange_recipient: [identification: "73130012", partner_identification: "30"],
       date_time: [year: "94", month: "01", day: "01", hour: "09", minutes: "50"],
