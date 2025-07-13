@@ -7,12 +7,27 @@ defmodule Edifact.Parser do
     ignore(ascii_string([??], 1))
     |> concat(ascii_string(all_alphanumberic_char, 1))
 
-  level_a =
+  level_a_subset =
     choice([
       escaped_char,
       ascii_string([?A..?Z], 1),
       ascii_string([?0..?9], 1),
       ascii_string([?\s, ?., ?,, ?-, ?(, ?), ?/, ?=], 1)
+    ])
+
+  level_b_subset =
+    choice([
+      escaped_char,
+      ascii_string([?A..?Z], 1),
+      ascii_string([?a..?z], 1),
+      ascii_string([?0..?9], 1),
+      ascii_string([?\s, ?., ?,, ?-, ?(, ?), ?/, ?=, ?!, ?", ?%, ?&, ?*, ?;, ?<, ?>], 1)
+    ])
+
+  charset_subset =
+    choice([
+      level_a_subset,
+      level_b_subset
     ])
 
   component_data_element_separator =
@@ -67,17 +82,17 @@ defmodule Edifact.Parser do
     |> unwrap_and_tag(:syntax_version_number)
 
   participant_identification =
-    times(level_a, min: 1, max: 35)
+    times(charset_subset, min: 1, max: 35)
     |> reduce({Enum, :join, []})
     |> unwrap_and_tag(:identification)
 
   partner_identification =
-    times(level_a, min: 1, max: 4)
+    times(charset_subset, min: 1, max: 4)
     |> reduce({Enum, :join, []})
     |> unwrap_and_tag(:partner_identification)
 
   address_for_reverse_routing =
-    times(level_a, min: 1, max: 14)
+    times(charset_subset, min: 1, max: 14)
     |> reduce({Enum, :join, []})
     |> unwrap_and_tag(:routing_address)
 
@@ -261,7 +276,7 @@ defmodule Edifact.Parser do
     |> tag(:date_time)
 
   interchange_control_reference =
-    times(level_a, min: 1, max: 14)
+    times(charset_subset, min: 1, max: 14)
     |> reduce({Enum, :join, []})
     |> unwrap_and_tag(:interchange_control_reference)
 
