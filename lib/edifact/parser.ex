@@ -178,7 +178,7 @@ defmodule Edifact.Parser do
       string("17"),
       string("18"),
       string("19"),
-      string("10"),
+      string("20"),
       string("21"),
       string("22"),
       string("23"),
