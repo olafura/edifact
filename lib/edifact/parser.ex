@@ -20,7 +20,7 @@ defmodule Edifact.Parser do
     ignore(ascii_string([?:], 1))
 
   data_element_seperator =
-    ascii_string(all_alphanumberic_char, 1)
+    ascii_string([{:not, ?:} | all_alphanumberic_char], 1)
     |> unwrap_and_tag(:data_element_seperator)
 
   decimal_notation =
@@ -44,6 +44,7 @@ defmodule Edifact.Parser do
     |> concat(release_indicator)
     |> ignore(string(" "))
     |> concat(segment_terminator)
+    |> post_traverse({:una_check_if_same, []})
   )
 
   default_data_element_seperator =
@@ -322,5 +323,16 @@ defmodule Edifact.Parser do
       ^decimal_notation -> "."
       ^segment_terminator -> "'"
     end)
+  end
+
+  defp una_check_if_same(rest, args, context, _line, _offset) do
+    set = MapSet.new(Keyword.values(args))
+
+    if MapSet.size(set) == length(args) do
+      {rest, args, context}
+    else
+      {:error,
+       "Service String Advice should have different values for data element separator, decimal notation, release indicator or segment terminator"}
+    end
   end
 end
