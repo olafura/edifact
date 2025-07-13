@@ -25,7 +25,9 @@ defmodule Edifact.ParserTest do
       interchange_sender: [identification: "9457386", partner_identification: "30"],
       interchange_recipient: [identification: "73130012", partner_identification: "30"],
       date_time: [year: "94", month: "01", day: "01", hour: "09", minutes: "50"],
-      interchange_control_reference: "8"
+      interchange_control_reference: "8",
+      recipient_reference_password: [reference_password: "MPM| + 2.19"],
+      application_reference: "1424"
     ]
 
     assert {:ok, ^parsed, _, _, _, _} = Edifact.Parser.interchange_header(line)

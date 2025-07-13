@@ -280,6 +280,46 @@ defmodule Edifact.Parser do
     |> reduce({Enum, :join, []})
     |> unwrap_and_tag(:interchange_control_reference)
 
+  reference_password =
+    times(charset_subset, min: 1, max: 14)
+    |> reduce({Enum, :join, []})
+    |> unwrap_and_tag(:reference_password)
+
+  reference_password_qualifier =
+    times(charset_subset, 2)
+    |> reduce({Enum, :join, []})
+    |> unwrap_and_tag(:reference_password_qualifier)
+
+  recipient_reference_password =
+    reference_password
+    |> optional(
+      component_data_element_separator
+      |> optional(reference_password_qualifier)
+    )
+    |> tag(:recipient_reference_password)
+
+  application_reference =
+    times(charset_subset, min: 1, max: 14)
+    |> reduce({Enum, :join, []})
+    |> unwrap_and_tag(:application_reference)
+
+  processing_priority_code =
+    charset_subset
+    |> unwrap_and_tag(:processing_priority_code)
+
+  acknowledgement_request =
+    integer(1)
+    |> unwrap_and_tag(:acknowledgement_request)
+
+  communication_agreement_id =
+    times(charset_subset, min: 1, max: 35)
+    |> reduce({Enum, :join, []})
+    |> unwrap_and_tag(:communication_agreement_id)
+
+  test_indicator =
+    string("1")
+    |> unwrap_and_tag(:test_indicator)
+
   defparsec(
     :interchange_header,
     ignore(string("UNB"))
@@ -295,6 +335,31 @@ defmodule Edifact.Parser do
     |> concat(date_time)
     |> concat(default_data_element_separator)
     |> concat(interchange_control_reference)
+    |> optional(
+      default_data_element_separator
+      |> optional(recipient_reference_password)
+      |> optional(
+        default_data_element_separator
+        |> optional(application_reference)
+        |> optional(
+          default_data_element_separator
+          |> optional(processing_priority_code)
+          |> optional(
+            default_data_element_separator
+            |> optional(acknowledgement_request)
+            |> optional(
+              default_data_element_separator
+              |> optional(communication_agreement_id)
+              |> optional(
+                default_data_element_separator
+                |> optional(test_indicator)
+              )
+            )
+          )
+        )
+      )
+    )
+    |> ignore(string("'"))
   )
 
   def parse_service_string_advice(first_line) do
