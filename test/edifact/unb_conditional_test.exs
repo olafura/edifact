@@ -3,9 +3,9 @@ defmodule Edifact.UnbConditionalTest do
 
   @moduledoc """
   Tests for UNB (Interchange Header) conditional element parsing.
-  
+
   The parser now supports all conditional UNB elements according to EDIFACT Syntax Rules Section 7.2-7.3.
-  
+
   Conditional elements in UNB:
   - Position 6: Recipients reference/password (S005) - Optional composite
   - Position 7: Application reference (0026) - Optional  
@@ -13,7 +13,7 @@ defmodule Edifact.UnbConditionalTest do
   - Position 9: Acknowledgement request (0031) - Optional
   - Position 10: Communications agreement ID (0032) - Optional
   - Position 11: Test indicator (0035) - Optional
-  
+
   Missing conditional elements are indicated by:
   1. Empty positions: UNB+...+REF++APP' (skip pos 6, populate pos 7)
   2. Truncation: UNB+...+REF+PASS' (omit trailing positions)
@@ -33,7 +33,7 @@ defmodule Edifact.UnbConditionalTest do
       assert Keyword.has_key?(parsed, :interchange_sender)
       assert Keyword.has_key?(parsed, :interchange_recipient)
       assert Keyword.has_key?(parsed, :date_time)
-      
+
       # Should not have any optional elements
       refute Keyword.has_key?(parsed, :recipient_reference_password)
       refute Keyword.has_key?(parsed, :application_reference)
@@ -153,22 +153,25 @@ defmodule Edifact.UnbConditionalTest do
     test "handles mixed conditional elements" do
       # Test various combinations of present and omitted elements
       test_cases = [
-        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+PASS+APP'", 
-         [recipient_reference_password: [reference_password: "PASS"], application_reference: "APP"]},
-        
-        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1++APP+A'", 
+        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+PASS+APP'",
+         [
+           recipient_reference_password: [reference_password: "PASS"],
+           application_reference: "APP"
+         ]},
+        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1++APP+A'",
          [application_reference: "APP", processing_priority_code: "A"]},
-         
-        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+PASS++A'", 
-         [recipient_reference_password: [reference_password: "PASS"], processing_priority_code: "A"]},
-         
-        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1++++1+AGR'", 
+        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+PASS++A'",
+         [
+           recipient_reference_password: [reference_password: "PASS"],
+           processing_priority_code: "A"
+         ]},
+        {"UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1++++1+AGR'",
          [acknowledgement_request: 1, communication_agreement_id: "AGR"]}
       ]
 
       for {line, expected_elements} <- test_cases do
         assert {:ok, parsed, _, _, _, _} = Edifact.Parser.interchange_header(line)
-        
+
         for {key, expected_value} <- expected_elements do
           assert Keyword.get(parsed, key) == expected_value
         end
@@ -189,7 +192,7 @@ defmodule Edifact.UnbConditionalTest do
           assert String.length(ref) == 14
           # Remaining should contain the excess character
           assert String.contains?(remaining, "A")
-          
+
         {:error, _, _, _, _, _} ->
           # Some implementations might reject this entirely
           :ok
@@ -199,7 +202,7 @@ defmodule Edifact.UnbConditionalTest do
     test "validates reference password qualifier length (exactly 2 chars)" do
       # Qualifier should be exactly 2 characters
       line = "UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+PASS:PQ'"
-      
+
       assert {:ok, parsed, _, _, _, _} = Edifact.Parser.interchange_header(line)
       recipients = Keyword.get(parsed, :recipient_reference_password)
       assert Keyword.get(recipients, :reference_password_qualifier) == "PQ"
@@ -225,7 +228,7 @@ defmodule Edifact.UnbConditionalTest do
     test "validates test indicator (must be '1')" do
       # Test indicator should only accept "1"
       line = "UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1++++++1'"
-      
+
       assert {:ok, parsed, _, _, _, _} = Edifact.Parser.interchange_header(line)
       assert Keyword.get(parsed, :test_indicator) == "1"
     end
@@ -234,10 +237,11 @@ defmodule Edifact.UnbConditionalTest do
       # Should accept up to 35 characters
       agreement_id = String.duplicate("A", 35)
       line = "UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1+++++#{agreement_id}'"
-      
+
       case Edifact.Parser.interchange_header(line) do
         {:ok, parsed, _, _, _, _} ->
           assert Keyword.get(parsed, :communication_agreement_id) == agreement_id
+
         {:error, _, _, _, _, _} ->
           # Parser might have other constraints
           :ok
@@ -250,7 +254,7 @@ defmodule Edifact.UnbConditionalTest do
       # All UNB segments must end with apostrophe
       line = "UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1'"
       assert {:ok, _, _, _, _, _} = Edifact.Parser.interchange_header(line)
-      
+
       # Missing terminator should fail
       line_no_terminator = "UNB+UNOC:3+SENDER:ZZ+RECEIVER:ZZ+940101:0950+1"
       assert {:error, _, _, _, _, _} = Edifact.Parser.interchange_header(line_no_terminator)
